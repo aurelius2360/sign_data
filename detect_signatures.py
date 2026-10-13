@@ -105,60 +105,106 @@ def run_detection(args: argparse.Namespace) -> None:
 
     print("-" * 65)
     for idx, img_file in enumerate(images, start=1):
-        # Run inference
-        results = model.predict(
-            source=str(img_file),
-            conf=args.conf,
-            imgsz=args.imgsz,
-            device=device,
-            verbose=False,
-        )
-
-        res = results[0]
-        boxes = res.boxes
-        num_found = len(boxes)
-        total_signatures += num_found
-
-        # Save annotated image
-        out_img_file = output_path / img_file.name
-        res.save(filename=str(out_img_file))
-
-        img_detections = []
-        conf_list = []
-        if num_found > 0:
-            coords = boxes.xyxy.cpu().numpy()
-            confs = boxes.conf.cpu().numpy()
-
-            # Optional signature crops
-            pil_img = Image.open(img_file).convert("RGB") if crops_dir else None
-
-            for b_idx, (b, c) in enumerate(zip(coords, confs), start=1):
-                box_xyxy = [round(float(v), 2) for v in b]
-                conf_val = round(float(c), 4)
-                conf_list.append(conf_val)
-                img_detections.append({
-                    "signature_id": b_idx,
-                    "confidence": conf_val,
-                    "box_xyxy": box_xyxy,
+        try:
+            # 1. Check for empty / 0-byte files
+            if img_file.stat().st_size == 0:
+                print(f"[{idx}/{len(images)}] {img_file.name:<35} -> ⚠️ Skipped (0-byte empty file)")
+                detections_record.append({
+                    "image_name": img_file.name,
+                    "image_path": str(img_file.resolve()),
+                    "output_annotated_image": None,
+                    "num_signatures": 0,
+                    "detections": [],
+                    "status": "skipped_empty_file",
                 })
+                continue
 
-                if pil_img and crops_dir:
-                    x1, y1, x2, y2 = [max(0, int(v)) for v in box_xyxy]
-                    cropped = pil_img.crop((x1, y1, x2, y2))
-                    crop_fn = f"{img_file.stem}_sig_{b_idx}.png"
-                    cropped.save(crops_dir / crop_fn)
+            # 2. Verify image integrity with PIL
+            try:
+                with Image.open(img_file) as im_check:
+                    im_check.verify()
+            except Exception as img_err:
+                print(f"[{idx}/{len(images)}] {img_file.name:<35} -> ⚠️ Skipped (corrupted image: {img_err})")
+                detections_record.append({
+                    "image_name": img_file.name,
+                    "image_path": str(img_file.resolve()),
+                    "output_annotated_image": None,
+                    "num_signatures": 0,
+                    "detections": [],
+                    "status": f"skipped_corrupted: {img_err}",
+                })
+                continue
 
-        conf_str = ", ".join(f"{c:.2f}" for c in conf_list) if conf_list else "none"
-        status_tag = f"✅ {num_found} signature(s) (conf: {conf_str})" if num_found > 0 else "⚪ 0 signatures"
-        print(f"[{idx}/{len(images)}] {img_file.name:<35} -> {status_tag}")
+            # 3. Run YOLO inference
+            results = model.predict(
+                source=str(img_file),
+                conf=args.conf,
+                imgsz=args.imgsz,
+                device=device,
+                verbose=False,
+            )
 
-        detections_record.append({
-            "image_name": img_file.name,
-            "image_path": str(img_file.resolve()),
-            "output_annotated_image": str(out_img_file.resolve()),
-            "num_signatures": num_found,
-            "detections": img_detections,
-        })
+            if not results or len(results) == 0:
+                print(f"[{idx}/{len(images)}] {img_file.name:<35} -> ⚠️ No model output returned")
+                continue
+
+            res = results[0]
+            boxes = res.boxes
+            num_found = len(boxes) if boxes is not None else 0
+            total_signatures += num_found
+
+            # Save annotated image
+            out_img_file = output_path / img_file.name
+            res.save(filename=str(out_img_file))
+
+            img_detections = []
+            conf_list = []
+            if num_found > 0:
+                coords = boxes.xyxy.cpu().numpy()
+                confs = boxes.conf.cpu().numpy()
+
+                # Optional signature crops
+                pil_img = Image.open(img_file).convert("RGB") if crops_dir else None
+
+                for b_idx, (b, c) in enumerate(zip(coords, confs), start=1):
+                    box_xyxy = [round(float(v), 2) for v in b]
+                    conf_val = round(float(c), 4)
+                    conf_list.append(conf_val)
+                    img_detections.append({
+                        "signature_id": b_idx,
+                        "confidence": conf_val,
+                        "box_xyxy": box_xyxy,
+                    })
+
+                    if pil_img and crops_dir:
+                        x1, y1, x2, y2 = [max(0, int(v)) for v in box_xyxy]
+                        cropped = pil_img.crop((x1, y1, x2, y2))
+                        crop_fn = f"{img_file.stem}_sig_{b_idx}.png"
+                        cropped.save(crops_dir / crop_fn)
+
+            conf_str = ", ".join(f"{c:.2f}" for c in conf_list) if conf_list else "none"
+            status_tag = f"✅ {num_found} signature(s) (conf: {conf_str})" if num_found > 0 else "⚪ 0 signatures"
+            print(f"[{idx}/{len(images)}] {img_file.name:<35} -> {status_tag}")
+
+            detections_record.append({
+                "image_name": img_file.name,
+                "image_path": str(img_file.resolve()),
+                "output_annotated_image": str(out_img_file.resolve()),
+                "num_signatures": num_found,
+                "detections": img_detections,
+                "status": "success",
+            })
+
+        except Exception as exc:
+            print(f"[{idx}/{len(images)}] {img_file.name:<35} -> ❌ Error: {exc}")
+            detections_record.append({
+                "image_name": img_file.name,
+                "image_path": str(img_file.resolve()),
+                "output_annotated_image": None,
+                "num_signatures": 0,
+                "detections": [],
+                "status": f"error: {exc}",
+            })
 
     print("-" * 65)
 
