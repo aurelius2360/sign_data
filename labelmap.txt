@@ -1,0 +1,20 @@
+item {
+  id: 1
+  name: 'signature'
+}
+
+item {
+  id: 2
+  name: 'initials'
+}
+
+item {
+  id: 3
+  name: 'redaction'
+}
+
+item {
+  id: 4
+  name: 'date'
+}
+

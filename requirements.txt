@@ -1,0 +1,19 @@
+# Install a CUDA build of torch first if you have an NVIDIA GPU, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+torch>=2.4
+torchvision>=0.19
+# Donut (train_donut.py)
+transformers>=4.45
+sentencepiece>=0.2
+protobuf>=4.25
+tqdm>=4.66
+numpy>=1.26
+# YOLO26 (train_yolo26.py) - YOLO26 needs ultralytics 8.4+
+ultralytics>=8.4.0
+# Shared data loading (signature_data.py)
+Pillow>=10.0
+PyYAML>=6.0
+pandas>=2.0
+kagglehub>=0.3.0
+huggingface_hub>=0.23.0
+datasets>=2.20  # only for --hf-data (e.g. tech4humans/signature-detection)
