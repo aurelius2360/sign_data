@@ -14,12 +14,21 @@ Automated signature detection and document analysis models trained on composite 
 
 ## Dataset
 
-Due to GitHub's file size restrictions on Git repositories, the full 1.8 GB dataset archive (`merged_dataset.zip`) is hosted on [GitHub Releases](https://github.com/aurelius2360/sign_data/releases).
+The complete 1.8 GB dataset archive (`merged_dataset.zip`) is hosted on [GitHub Releases](https://github.com/aurelius2360/sign_data/releases/tag/v1.0.0).
 
-To download and extract the dataset:
-1. Download `merged_dataset.zip` from the latest release: [Releases Page](https://github.com/aurelius2360/sign_data/releases).
-2. Place `merged_dataset.zip` in the root of this repository.
-3. Extract the archive into `merged_dataset/`.
+- **Direct Download Link:** [merged_dataset.zip (1.8 GB)](https://github.com/aurelius2360/sign_data/releases/download/v1.0.0/merged_dataset.zip)
+
+### Download via Terminal / Colab:
+```bash
+# Using wget:
+wget https://github.com/aurelius2360/sign_data/releases/download/v1.0.0/merged_dataset.zip
+
+# Or using curl:
+curl -L -O https://github.com/aurelius2360/sign_data/releases/download/v1.0.0/merged_dataset.zip
+
+# Unzip the dataset
+unzip merged_dataset.zip -d merged_dataset
+```
 
 ## Installation
 
